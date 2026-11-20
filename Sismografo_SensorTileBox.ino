@@ -35,66 +35,66 @@
 // ----------------------------------------------------------------------------
 // Pin (nomi PXn: sono sempre validi nel core; fra parentesi l'etichetta del variant)
 // ----------------------------------------------------------------------------
-#define PIN_SPI1_MOSI PE15
-#define PIN_SPI1_MISO PE14   // SPI1_MISO
-#define PIN_SPI1_SCK PE13    // SPI1_CLK
-#define PIN_CS_LSM6 PE12     // CS_INEMO
-#define PIN_INT1_LSM6 PA2    // INT1_INEMO
-#define PIN_CS_LIS2DW PE11   // CS_ACC   (tenuto inattivo)
-#define PIN_CS_LIS3DHH PE10  // CS_ACC2  (tenuto inattivo)
-#define PIN_CS_MAG PA15      // CS_MAG   (tenuto inattivo)
-#define PIN_BLE_RST PA8      // NRST_BLE
-#define PIN_BLE_UART_TX PD5  // UART2 verso BLE
-#define PIN_BLE_UART_RX PD6
-#define PIN_SD_EN PE4     // SD_EN
-#define PIN_SD_SEL PE5    // SD_SEL
-#define PIN_LED_BLU PB15  // CPU_LED
+#define PIN_SPI1_MOSI   PE_15
+#define PIN_SPI1_MISO   PE_14   // SPI1_MISO
+#define PIN_SPI1_SCK    PE_13   // SPI1_CLK
+#define PIN_CS_LSM6     PE_12   // CS_INEMO
+#define PIN_INT1_LSM6   PA_2    // INT1_INEMO
+#define PIN_CS_LIS2DW   PE_11   // CS_ACC   (tenuto inattivo)
+#define PIN_CS_LIS3DHH  PE_10   // CS_ACC2  (tenuto inattivo)
+#define PIN_CS_MAG      PA_15   // CS_MAG   (tenuto inattivo)
+#define PIN_BLE_RST     PA_8    // NRST_BLE
+#define PIN_BLE_UART_TX PD_5    // UART2 verso BLE
+#define PIN_BLE_UART_RX PD_6
+#define PIN_SD_EN       PE_4    // SD_EN
+#define PIN_SD_SEL      PE_5    // SD_SEL
+#define PIN_LED_BLU     PB_15   // CPU_LED
 
-#define USE_USER_BUTTON_RESET 1  // pulsante USER (PG1) = reset per rientrare nella finestra USB
+#define USE_USER_BUTTON_RESET 1   // pulsante USER (PG_1) = reset per rientrare nella finestra USB
 #ifdef USER_BTN
-#define PIN_USER_BTN USER_BTN
+  #define PIN_USER_BTN  USER_BTN
 #else
-#define PIN_USER_BTN PG1
+  #define PIN_USER_BTN  PG_1
 #endif
 
 // [VERIFICA] polarita' di SD_EN / SD_SEL: sono ipotesi, controllare con lo schema
-#define SD_EN_ON_LEVEL HIGH
-#define SD_SEL_LEVEL HIGH
+#define SD_EN_ON_LEVEL   HIGH
+#define SD_SEL_LEVEL     HIGH
 
 // ----------------------------------------------------------------------------
 // Parametri di rilevazione
 // ----------------------------------------------------------------------------
-static const float ODR_HZ = 104.0f;             // deve combaciare con ODR_XL/BDR_XL sotto
-static const float MG_PER_LSB = 0.061f;         // fondo scala +-2 g
-static const uint8_t WAKE_THS = 2;              // x 7.8 mg (FS 2 g, WAKE_THS_W=1) => ~15.6 mg. Min = 1
-static const uint16_t WTM_SAMPLES = 200;        // sveglia ogni ~1.9 s durante la registrazione
-static const int16_t QUIET_P2P_LSB = 100;       // picco-picco sotto cui il segnale e' "quieto" (~6 mg)
-static const uint32_t QUIET_SECONDS = 20;       // quiete richiesta per chiudere l'evento
-static const uint32_t MAX_EVENT_SECONDS = 600;  // tetto di durata di un evento
-static const uint32_t BOOT_WINDOW_MS = 15000;   // finestra per sincronizzare l'orologio
+static const float    ODR_HZ           = 104.0f;  // deve combaciare con ODR_XL/BDR_XL sotto
+static const float    MG_PER_LSB       = 0.061f;  // fondo scala +-2 g
+static const uint8_t  WAKE_THS         = 2;       // x 7.8 mg (FS 2 g, WAKE_THS_W=1) => ~15.6 mg. Min = 1
+static const uint16_t WTM_SAMPLES      = 200;     // sveglia ogni ~1.9 s durante la registrazione
+static const int16_t  QUIET_P2P_LSB    = 100;     // picco-picco sotto cui il segnale e' "quieto" (~6 mg)
+static const uint32_t QUIET_SECONDS    = 20;      // quiete richiesta per chiudere l'evento
+static const uint32_t MAX_EVENT_SECONDS= 600;     // tetto di durata di un evento
+static const uint32_t BOOT_WINDOW_MS   = 15000;   // finestra per sincronizzare l'orologio
 
 // ----------------------------------------------------------------------------
 // Registri LSM6DSOX
 // ----------------------------------------------------------------------------
-#define R_FIFO_CTRL1 0x07
-#define R_FIFO_CTRL2 0x08
-#define R_FIFO_CTRL3 0x09
-#define R_FIFO_CTRL4 0x0A
-#define R_INT1_CTRL 0x0D
-#define R_WHO_AM_I 0x0F
-#define R_CTRL1_XL 0x10
-#define R_CTRL3_C 0x12
-#define R_CTRL6_C 0x15
-#define R_WAKE_UP_SRC 0x1B
-#define R_FIFO_STATUS1 0x3A
-#define R_FIFO_STATUS2 0x3B
-#define R_TAP_CFG0 0x56
-#define R_TAP_CFG2 0x58
-#define R_WAKE_UP_THS 0x5B
-#define R_WAKE_UP_DUR 0x5C
-#define R_MD1_CFG 0x5E
-#define R_FIFO_OUT_TAG 0x78
-#define TAG_XL_NC 0x02
+#define R_FIFO_CTRL1     0x07
+#define R_FIFO_CTRL2     0x08
+#define R_FIFO_CTRL3     0x09
+#define R_FIFO_CTRL4     0x0A
+#define R_INT1_CTRL      0x0D
+#define R_WHO_AM_I       0x0F
+#define R_CTRL1_XL       0x10
+#define R_CTRL3_C        0x12
+#define R_CTRL6_C        0x15
+#define R_WAKE_UP_SRC    0x1B
+#define R_FIFO_STATUS1   0x3A
+#define R_FIFO_STATUS2   0x3B
+#define R_TAP_CFG0       0x56
+#define R_TAP_CFG2       0x58
+#define R_WAKE_UP_THS    0x5B
+#define R_WAKE_UP_DUR    0x5C
+#define R_MD1_CFG        0x5E
+#define R_FIFO_OUT_TAG   0x78
+#define TAG_XL_NC        0x02
 
 // ----------------------------------------------------------------------------
 SPIClass spi1(PIN_SPI1_MOSI, PIN_SPI1_MISO, PIN_SPI1_SCK);
@@ -102,19 +102,15 @@ static const SPISettings spiCfg(4000000, MSBFIRST, SPI_MODE3);
 STM32RTC &rtc = STM32RTC::getInstance();
 
 volatile bool int1Flag = false;
-volatile bool btnFlag = false;
+volatile bool btnFlag  = false;
 
 #define BUF_SAMPLES 640
 static int16_t sbuf[BUF_SAMPLES][3];
 #define OUT_SIZE 16384
-static char outbuf[OUT_SIZE];
+static char    outbuf[OUT_SIZE];
 
-void onInt1() {
-  int1Flag = true;
-}
-void onButton() {
-  btnFlag = true;
-}
+void onInt1()   { int1Flag = true; }
+void onButton() { btnFlag  = true; }
 
 // ----------------------------------------------------------------------------
 // SPI
@@ -151,12 +147,12 @@ static void rdBurst(uint8_t reg, uint8_t *buf, uint8_t len) {
 // LSM6DSOX
 // ----------------------------------------------------------------------------
 static bool lsmInit() {
-  wr(R_CTRL3_C, 0x01);  // SW_RESET
+  wr(R_CTRL3_C, 0x01);                          // SW_RESET
   for (uint8_t i = 0; i < 50 && (rd(R_CTRL3_C) & 0x01); i++) delay(2);
   if (rd(R_WHO_AM_I) != 0x6C) return false;
 
-  wr(R_CTRL3_C, 0x44);  // BDU=1, IF_INC=1
-  wr(R_CTRL6_C, 0x00);  // accel in high-performance (XL_HM_MODE=0)
+  wr(R_CTRL3_C, 0x44);                          // BDU=1, IF_INC=1
+  wr(R_CTRL6_C, 0x00);                          // accel in high-performance (XL_HM_MODE=0)
   // [Opzione consumi] 0x10 = low-power/normal: meno corrente, piu' rumore. Vedi datasheet.
 
   // FIFO: solo accelerometro a 104 Hz, watermark, modalita' bypass finche' non armiamo
@@ -167,13 +163,13 @@ static bool lsmInit() {
 
   // Wake-up: filtro slope (SLOPE_FDS=0), soglia fine (WAKE_THS_W=1), interrupt abilitati
   wr(R_TAP_CFG0, 0x00);
-  wr(R_TAP_CFG2, 0x80);  // INTERRUPTS_ENABLE
+  wr(R_TAP_CFG2, 0x80);                         // INTERRUPTS_ENABLE
   wr(R_WAKE_UP_THS, WAKE_THS & 0x3F);
-  wr(R_WAKE_UP_DUR, 0x10);  // WAKE_THS_W=1, WAKE_DUR=0
+  wr(R_WAKE_UP_DUR, 0x10);                      // WAKE_THS_W=1, WAKE_DUR=0
   wr(R_INT1_CTRL, 0x00);
   wr(R_MD1_CFG, 0x00);
 
-  wr(R_CTRL1_XL, 0x40);  // ODR 104 Hz, FS +-2 g  -> accel acceso
+  wr(R_CTRL1_XL, 0x40);                         // ODR 104 Hz, FS +-2 g  -> accel acceso
   return true;
 }
 
@@ -181,12 +177,12 @@ static bool lsmInit() {
 static void lsmArm() {
   wr(R_INT1_CTRL, 0x00);
   wr(R_MD1_CFG, 0x00);
-  wr(R_FIFO_CTRL4, 0x00);  // Bypass = svuota
-  wr(R_FIFO_CTRL4, 0x06);  // Continuous
-  delay(300);              // assestamento del filtro slope
+  wr(R_FIFO_CTRL4, 0x00);                       // Bypass = svuota
+  wr(R_FIFO_CTRL4, 0x06);                       // Continuous
+  delay(300);                                   // assestamento del filtro slope
   (void)rd(R_WAKE_UP_SRC);
   int1Flag = false;
-  wr(R_MD1_CFG, 0x20);  // INT1_WU
+  wr(R_MD1_CFG, 0x20);                          // INT1_WU
 }
 
 static uint16_t fifoLevel() {
@@ -223,8 +219,7 @@ static int16_t chunkP2P(uint16_t n) {
       if (sbuf[i][a] > mx[a]) mx[a] = sbuf[i][a];
     }
   int16_t p = 0;
-  for (uint8_t a = 0; a < 3; a++)
-    if ((int16_t)(mx[a] - mn[a]) > p) p = mx[a] - mn[a];
+  for (uint8_t a = 0; a < 3; a++) if ((int16_t)(mx[a] - mn[a]) > p) p = mx[a] - mn[a];
   return p;
 }
 
@@ -258,11 +253,11 @@ static void writeChunk(File &f, uint32_t ep, uint32_t ms, uint16_t n, bool ovr) 
 // ----------------------------------------------------------------------------
 static void recordEvent() {
   uint32_t ms = 0;
-  uint32_t ep = rtc.getEpoch(&ms);      // istante del trigger (UTC)
-  uint16_t n = drainFifo(BUF_SAMPLES);  // PRE-trigger, subito, prima di accendere la SD
+  uint32_t ep = rtc.getEpoch(&ms);              // istante del trigger (UTC)
+  uint16_t n  = drainFifo(BUF_SAMPLES);         // PRE-trigger, subito, prima di accendere la SD
 
   sdPower(true);
-  if (!SD.begin(SD_DETECT_NONE)) {  // [VERIFICA] firma di begin() nella tua versione di STM32SD
+  if (!SD.begin(SD_DETECT_NONE)) {              // [VERIFICA] firma di begin() nella tua versione di STM32SD
     sdPower(false);
     lsmArm();
     return;
@@ -271,16 +266,12 @@ static void recordEvent() {
   time_t tt = ep;
   struct tm *g = gmtime(&tt);
   char dir[12], path[24];
-  snprintf(dir, sizeof(dir), "/%02d%02d%02d", g->tm_year % 100, g->tm_mon + 1, g->tm_mday);
+  snprintf(dir,  sizeof(dir),  "/%02d%02d%02d", g->tm_year % 100, g->tm_mon + 1, g->tm_mday);
   snprintf(path, sizeof(path), "%s/%02d%02d%02d.CSV", dir, g->tm_hour, g->tm_min, g->tm_sec);
   if (!SD.exists(dir)) SD.mkdir(dir);
 
   File f = SD.open(path, FILE_WRITE);
-  if (!f) {
-    sdPower(false);
-    lsmArm();
-    return;
-  }
+  if (!f) { sdPower(false); lsmArm(); return; }
 
   f.printf("# SensorTile.box seismograph\n");
   f.printf("# fmt=x,y,z raw_LSB mg_per_lsb=%.3f odr_hz=%.1f fs_g=2 rtc_set=%d\n",
@@ -291,7 +282,7 @@ static void recordEvent() {
 
   // Da qui sveglia solo a watermark FIFO (+ timeout di sicurezza)
   wr(R_MD1_CFG, 0x00);
-  wr(R_INT1_CTRL, 0x08);  // INT1_FIFO_TH
+  wr(R_INT1_CTRL, 0x08);                        // INT1_FIFO_TH
 
   uint32_t tStart = ep, quietStart = 0;
   while (true) {
@@ -299,7 +290,7 @@ static void recordEvent() {
 
     uint32_t ms2 = 0;
     uint32_t ep2 = rtc.getEpoch(&ms2);
-    bool ovr = rd(R_FIFO_STATUS2) & 0x40;  // FIFO_OVR_IA
+    bool ovr = rd(R_FIFO_STATUS2) & 0x40;       // FIFO_OVR_IA
     uint16_t m = drainFifo(BUF_SAMPLES);
     if (m) writeChunk(f, ep2, ms2, m, ovr);
 
@@ -329,10 +320,7 @@ static void sdSelfTest() {
   if (ok) {
     File f = SD.open("/TEST.TXT", FILE_WRITE);
     ok = (bool)f;
-    if (f) {
-      f.println("ok");
-      f.close();
-    }
+    if (f) { f.println("ok"); f.close(); }
   }
   Serial.println(ok ? "SD OK" : "SD ERRORE (controllare SD_EN/SD_SEL e la scheda)");
   sdPower(false);
@@ -361,10 +349,8 @@ static void timeSyncWindow() {
           } else if (line == "SD") {
             sdSelfTest();
           } else if (line == "?") {
-            Serial.print("epoch=");
-            Serial.print(rtc.getEpoch());
-            Serial.print(" rtc_set=");
-            Serial.println(rtc.isTimeSet());
+            Serial.print("epoch=");  Serial.print(rtc.getEpoch());
+            Serial.print(" rtc_set="); Serial.println(rtc.isTimeSet());
           }
           line = "";
         }
@@ -385,14 +371,10 @@ static void lowPowerPins() {
   pinMode(PIN_BLE_UART_RX, INPUT_ANALOG);
 
   // Altri sensori su SPI: CS alti, cosi' non rispondono al bus
-  pinMode(PIN_CS_LIS2DW, OUTPUT);
-  digitalWrite(PIN_CS_LIS2DW, HIGH);
-  pinMode(PIN_CS_LIS3DHH, OUTPUT);
-  digitalWrite(PIN_CS_LIS3DHH, HIGH);
-  pinMode(PIN_CS_MAG, OUTPUT);
-  digitalWrite(PIN_CS_MAG, HIGH);
-  pinMode(PIN_CS_LSM6, OUTPUT);
-  digitalWrite(PIN_CS_LSM6, HIGH);
+  pinMode(PIN_CS_LIS2DW,  OUTPUT); digitalWrite(PIN_CS_LIS2DW,  HIGH);
+  pinMode(PIN_CS_LIS3DHH, OUTPUT); digitalWrite(PIN_CS_LIS3DHH, HIGH);
+  pinMode(PIN_CS_MAG,     OUTPUT); digitalWrite(PIN_CS_MAG,     HIGH);
+  pinMode(PIN_CS_LSM6,    OUTPUT); digitalWrite(PIN_CS_LSM6,    HIGH);
 
   sdPower(false);
 }
@@ -401,20 +383,17 @@ void setup() {
   lowPowerPins();
 
   rtc.setClockSource(STM32RTC::LSE_CLOCK);
-  rtc.begin();  // se l'RTC gia' gira, mantiene l'ora
+  rtc.begin();                                  // se l'RTC gia' gira, mantiene l'ora
 
   spi1.begin();
   pinMode(PIN_INT1_LSM6, INPUT);
 
-  if (!lsmInit()) {  // LSM6DSOX non risponde: lampeggio veloce
+  if (!lsmInit()) {                             // LSM6DSOX non risponde: lampeggio veloce
     pinMode(PIN_LED_BLU, OUTPUT);
-    while (true) {
-      digitalWrite(PIN_LED_BLU, !digitalRead(PIN_LED_BLU));
-      delay(100);
-    }
+    while (true) { digitalWrite(PIN_LED_BLU, !digitalRead(PIN_LED_BLU)); delay(100); }
   }
 
-  timeSyncWindow();  // finestra USB: "T<epoch>", "SD", "?"
+  timeSyncWindow();                             // finestra USB: "T<epoch>", "SD", "?"
 
   LowPower.begin();
   LowPower.attachInterruptWakeup(PIN_INT1_LSM6, onInt1, RISING, DEEP_SLEEP_MODE);
@@ -428,12 +407,9 @@ void setup() {
 
 void loop() {
   if (!int1Flag && !btnFlag && digitalRead(PIN_INT1_LSM6) == LOW) {
-    LowPower.deepSleep();  // Stop mode finche' INT1 (o USER) non sveglia
+    LowPower.deepSleep();                       // Stop mode finche' INT1 (o USER) non sveglia
   }
-  if (btnFlag) {
-    delay(50);
-    NVIC_SystemReset();
-  }
+  if (btnFlag) { delay(50); NVIC_SystemReset(); }
   if (int1Flag || digitalRead(PIN_INT1_LSM6) == HIGH) {
     int1Flag = false;
     recordEvent();
