@@ -251,14 +251,27 @@ static void writeChunk(File &f, uint32_t ep, uint32_t ms, uint16_t n, bool ovr) 
 // ----------------------------------------------------------------------------
 // Evento
 // ----------------------------------------------------------------------------
+// Segnalazione col LED blu (consumo trascurabile: pochi ms per evento)
+static void ledBlink(uint8_t times, uint16_t onMs = 40, uint16_t offMs = 120) {
+  pinMode(PIN_LED_BLU, OUTPUT);
+  for (uint8_t i = 0; i < times; i++) {
+    digitalWrite(PIN_LED_BLU, HIGH);
+    delay(onMs);
+    digitalWrite(PIN_LED_BLU, LOW);
+    if (i < times - 1) delay(offMs);
+  }
+}
+
 static void recordEvent() {
   uint32_t ms = 0;
   uint32_t ep = rtc.getEpoch(&ms);              // istante del trigger (UTC)
   uint16_t n  = drainFifo(BUF_SAMPLES);         // PRE-trigger, subito, prima di accendere la SD
+  ledBlink(1);                                  // 1 lampeggio = trigger rilevato
 
   sdPower(true);
   if (!SD.begin(SD_DETECT_NONE)) {              // [VERIFICA] firma di begin() nella tua versione di STM32SD
     sdPower(false);
+    ledBlink(5, 60, 60);                        // 5 lampeggi rapidi = SD non risponde
     lsmArm();
     return;
   }
@@ -271,7 +284,7 @@ static void recordEvent() {
   if (!SD.exists(dir)) SD.mkdir(dir);
 
   File f = SD.open(path, FILE_WRITE);
-  if (!f) { sdPower(false); lsmArm(); return; }
+  if (!f) { sdPower(false); ledBlink(5, 60, 60); lsmArm(); return; }
 
   f.printf("# SensorTile.box seismograph\n");
   f.printf("# fmt=x,y,z raw_LSB mg_per_lsb=%.3f odr_hz=%.1f fs_g=2 rtc_set=%d\n",
@@ -308,6 +321,7 @@ static void recordEvent() {
 
   f.close();
   sdPower(false);
+  ledBlink(2);                                  // 2 lampeggi = evento chiuso e salvato
   lsmArm();
 }
 
