@@ -16,7 +16,10 @@
  *     quieto per QUIET_SECONDS. Poi SD spenta, FIFO azzerata e di nuovo a dormire.
  *   - Bluetooth tenuto in reset, UART del BLE in analogico.
  *   - Orologio (RTC, UTC) sincronizzato via USB: all'accensione/reset c'e' una finestra
- *     di BOOT_WINDOW_MS in cui la seriale accetta "T<epoch>\n" (vedi sync_time.py).
+ *     di BOOT_WINDOW_MS per collegare un host. Se la porta viene aperta (Serial Monitor,
+ *     sync_time.py) la seriale resta attiva (modalita' servizio) finche' la porta e' aperta;
+ *     comandi: "T<epoch>", "SD" (autotest SD), "?" (stato), "X" (esci).
+ *     Con cavo di sola alimentazione la seriale si chiude da sola a fine finestra.
  *     Premendo il pulsante USER la scheda si resetta e riapre la finestra.
  *
  * File su SD:   /AAMMGG/HHMMSS.CSV   (data e ora UTC dell'inizio evento)
@@ -31,6 +34,7 @@
 #include <STM32RTC.h>
 #include <STM32LowPower.h>
 #include <STM32SD.h>
+#include "sd_end_helper.h"   // sdEnd(): chiude la SD (in un .h a parte per non confondere l'IDE)
 
 // ----------------------------------------------------------------------------
 // Pin (nomi PXn: sono sempre validi nel core; fra parentesi l'etichetta del variant)
@@ -59,7 +63,9 @@
 
 // [VERIFICA] polarita' di SD_EN / SD_SEL: sono ipotesi, controllare con lo schema
 #define SD_EN_ON_LEVEL   HIGH
-#define SD_SEL_LEVEL     HIGH
+#define SD_SEL_LEVEL     LOW
+#define SD_EXPLICIT_PINS 1      // 1 = imposta a mano i pin SDMMC1 (setDx/setCMD/...). Se non compila: 0
+#define SD_USE_DETECT    0      // 1 = SD.begin(PB_12) con pin di card-detect, 0 = SD_DETECT_NONE
 
 // ----------------------------------------------------------------------------
 // Parametri di rilevazione
@@ -226,16 +232,42 @@ static int16_t chunkP2P(uint16_t n) {
 // ----------------------------------------------------------------------------
 // SD
 // ----------------------------------------------------------------------------
+static uint8_t sdEnOn  = SD_EN_ON_LEVEL;    // modificabili dall'autotest "SD"
+static uint8_t sdSelLv = SD_SEL_LEVEL;
+
 static void sdPower(bool on) {
   pinMode(PIN_SD_EN, OUTPUT);
   pinMode(PIN_SD_SEL, OUTPUT);
   if (on) {
-    digitalWrite(PIN_SD_SEL, SD_SEL_LEVEL);
-    digitalWrite(PIN_SD_EN, SD_EN_ON_LEVEL);
+    digitalWrite(PIN_SD_SEL, sdSelLv);
+    digitalWrite(PIN_SD_EN, sdEnOn);
     delay(60);
   } else {
-    digitalWrite(PIN_SD_EN, !SD_EN_ON_LEVEL);
+    digitalWrite(PIN_SD_EN, !sdEnOn);
   }
+}
+
+// Pin SDMMC1 della SensorTile.box (dal pinout del variant). Il core >= 2.6.0 sceglie di default
+// "il primo pin di ogni array", che puo' non coincidere con quelli cablati sulla scheda.
+static void sdConfigPins() {
+#if SD_EXPLICIT_PINS
+  SD.setDx(PC_8, PC_9, PC_10, PC_11);
+  SD.setCMD(PD_2);
+  SD.setCK(PC_12);
+  SD.setCKIN(PB_8);          // SDMMC1_CLK_F (ritorno clock dal traslatore)
+  SD.setCDIR(PB_9);          // CMDDIR
+  SD.setDxDIR(PC_6, PC_7);   // DAT0DIR, DAT123DIR
+#endif
+}
+
+static bool sdBegin(bool useDetect) {
+  sdConfigPins();
+#ifdef SD_DETECT_PIN
+  if (useDetect) return SD.begin(SD_DETECT_PIN);
+#else
+  if (useDetect) return SD.begin(PB_12);
+#endif
+  return SD.begin(SD_DETECT_NONE);
 }
 
 static void writeChunk(File &f, uint32_t ep, uint32_t ms, uint16_t n, bool ovr) {
@@ -269,7 +301,8 @@ static void recordEvent() {
   ledBlink(1);                                  // 1 lampeggio = trigger rilevato
 
   sdPower(true);
-  if (!SD.begin(SD_DETECT_NONE)) {              // [VERIFICA] firma di begin() nella tua versione di STM32SD
+  if (!sdBegin(SD_USE_DETECT)) {
+    sdEnd();
     sdPower(false);
     ledBlink(5, 60, 60);                        // 5 lampeggi rapidi = SD non risponde
     lsmArm();
@@ -284,13 +317,16 @@ static void recordEvent() {
   if (!SD.exists(dir)) SD.mkdir(dir);
 
   File f = SD.open(path, FILE_WRITE);
-  if (!f) { sdPower(false); ledBlink(5, 60, 60); lsmArm(); return; }
+  if (!f) { sdEnd(); sdPower(false); ledBlink(5, 60, 60); lsmArm(); return; }
 
-  f.printf("# SensorTile.box seismograph\n");
-  f.printf("# fmt=x,y,z raw_LSB mg_per_lsb=%.3f odr_hz=%.1f fs_g=2 rtc_set=%d\n",
-           MG_PER_LSB, ODR_HZ, rtc.isTimeSet() ? 1 : 0);
-  f.printf("# trigger_utc_epoch=%lu.%03lu wake_ths_mg=%.1f\n",
-           (unsigned long)ep, (unsigned long)ms, WAKE_THS * 7.8f);
+  // Intestazione scritta con snprintf (solo interi: printf dei float non e' abilitato nel core)
+  size_t hl = snprintf(outbuf, OUT_SIZE,
+      "# SensorTile.box seismograph\n"
+      "# fmt=x,y,z raw_LSB ; mg_per_lsb_x1000=61 ; odr_nominale_hz=104 ; fs_g=2 ; rtc_set=%d\n"
+      "# trigger_utc_epoch=%lu.%03lu ; wake_ths_mg_x10=%u\n"
+      "# ogni riga '# t=' e' un BLOCCO di campioni dello stesso evento, non un evento nuovo\n",
+      rtc.isTimeSet() ? 1 : 0, (unsigned long)ep, (unsigned long)ms, (unsigned)(WAKE_THS * 78));
+  f.write((const uint8_t *)outbuf, hl);
   writeChunk(f, ep, ms, n, false);
 
   // Da qui sveglia solo a watermark FIFO (+ timeout di sicurezza)
@@ -320,6 +356,7 @@ static void recordEvent() {
   }
 
   f.close();
+  sdEnd();
   sdPower(false);
   ledBlink(2);                                  // 2 lampeggi = evento chiuso e salvato
   lsmArm();
@@ -329,50 +366,120 @@ static void recordEvent() {
 // Orologio via USB
 // ----------------------------------------------------------------------------
 static void sdSelfTest() {
-  sdPower(true);
-  bool ok = SD.begin(SD_DETECT_NONE);
-  if (ok) {
-    File f = SD.open("/TEST.TXT", FILE_WRITE);
-    ok = (bool)f;
-    if (f) { f.println("ok"); f.close(); }
+  const uint8_t enLv[2]  = {HIGH, LOW};
+  const uint8_t selLv[2] = {LOW, HIGH};
+  bool found = false;
+  for (uint8_t a = 0; a < 2 && !found; a++)
+    for (uint8_t c = 0; c < 2 && !found; c++)
+      for (uint8_t d = 0; d < 2 && !found; d++) {
+        sdEnOn = enLv[a]; sdSelLv = selLv[c];
+        sdPower(false); delay(150);
+        sdPower(true);  delay(150);
+        Serial.print("  EN_ON="); Serial.print(sdEnOn);
+        Serial.print(" SEL=");     Serial.print(sdSelLv);
+        Serial.print(" detect=");  Serial.print(d);
+        bool ok = sdBegin(d);
+        Serial.print(" -> begin ");
+        Serial.print(ok ? "OK" : "KO");
+        if (ok) {
+          File f = SD.open("/TEST.TXT", FILE_WRITE);
+          if (f) { f.println("ok"); f.close(); Serial.print(", scrittura OK"); found = true; }
+          else   Serial.print(", open KO");
+        }
+        Serial.println();
+        if (found) {
+          Serial.print("TROVATO: #define SD_EN_ON_LEVEL "); Serial.print(sdEnOn ? "HIGH" : "LOW");
+          Serial.print("  #define SD_SEL_LEVEL ");          Serial.print(sdSelLv ? "HIGH" : "LOW");
+          Serial.print("  #define SD_USE_DETECT ");          Serial.println(d);
+        } else {
+          sdEnd();   // altrimenti il tentativo successivo non reinizializza l'hardware
+        }
+      }
+  if (!found) {
+    Serial.println("SD ERRORE: nessuna combinazione funziona.");
+    Serial.println("Controlla: scheda inserita e formattata FAT32; mappatura SDMMC nel core; schema SD_EN/SD_SEL.");
   }
-  Serial.println(ok ? "SD OK" : "SD ERRORE (controllare SD_EN/SD_SEL e la scheda)");
+  sdEnd();
   sdPower(false);
 }
 
+// Gestione di una riga di comando ricevuta dalla seriale USB
+static uint32_t svcIdleLimit = 60000;   // ms senza dati dall'host prima di uscire dalla modalita' servizio
+
+static void handleCommand(const String &line) {
+  if (line[0] != 'T') svcIdleLimit = 60000;      // altri comandi: sessione interattiva, limite lungo
+  if (line[0] == 'T') {
+    uint32_t e = strtoul(line.c_str() + 1, nullptr, 10);
+    if (e > 1700000000UL) {
+      rtc.setEpoch(e);
+      Serial.print("OK ");
+      Serial.println(rtc.getEpoch());
+      svcIdleLimit = 8000;                      // dopo la sincronizzazione esce presto se non arriva altro
+    } else Serial.println("ERR epoch");
+  } else if (line == "SD") {
+    sdSelfTest();
+  } else if (line == "?") {
+    Serial.print("epoch=");   Serial.print(rtc.getEpoch());
+    Serial.print(" rtc_set="); Serial.print(rtc.isTimeSet());
+    Serial.print(" who=0x");  Serial.println(rd(R_WHO_AM_I), HEX);
+  } else if (line == "D") {
+    pinMode(PB_12, INPUT_PULLUP);                 // SD_DETECT: va anche al traslatore di livello
+    Serial.print("SD_DETECT (PB12)="); Serial.println(digitalRead(PB_12));
+  } else if (line == "X") {
+    Serial.println("Uscita dalla modalita' servizio");
+  } else {
+    Serial.println("Comandi: T<epoch>  SD  ?  X (esci)");
+  }
+}
+
+// Modalita' servizio: all'avvio la seriale USB resta aperta BOOT_WINDOW_MS in attesa di un host.
+//  - Se nessun host si collega entro la finestra (cavo di sola alimentazione o nessun programma
+//    con la porta aperta) la seriale viene chiusa e si passa al funzionamento normale.
+//  - Se un host apre la porta (DTR attivo) oppure invia dati, la seriale resta attiva finche' la
+//    porta non viene richiusa (con 3 s di tolleranza), si invia "X", oppure non arrivano dati per
+//    60 s (8 s dopo una sincronizzazione "T"). Il timeout serve perche' su alcuni PC il DTR non
+//    scende alla chiusura della porta e la scheda resterebbe sveglia senza registrare.
 static void timeSyncWindow() {
   Serial.begin(115200);
   pinMode(PIN_LED_BLU, OUTPUT);
   uint32_t deadline = millis() + BOOT_WINDOW_MS;
+  uint32_t lastConn = 0, lastRx = 0;
+  bool everConn = false, greeted = false, quit = false;
   String line;
-  bool selfTested = false;
-  while ((int32_t)(millis() - deadline) < 0) {
-    digitalWrite(PIN_LED_BLU, (millis() / 250) & 1);
+
+  while (!quit) {
+    uint32_t now = millis();
+    bool conn = (bool)Serial;
+    if (conn) { if (!everConn) lastRx = now; everConn = true; lastConn = now; }
+
+    if (!everConn && (int32_t)(now - deadline) >= 0) break;      // nessun host
+    if (everConn && !conn && (now - lastConn) > 3000) break;      // host scomparso
+    if (everConn && (now - lastRx) > svcIdleLimit) {              // nessun dato per troppo tempo
+      if (conn) Serial.println("Modalita' servizio chiusa per inattivita'");
+      break;
+    }
+
+    // LED: lampeggio veloce in attesa dell'host, brevi impulsi quando connesso
+    digitalWrite(PIN_LED_BLU, conn ? ((now % 1000) < 80) : ((now / 250) & 1));
+
+    if (conn && !greeted) {
+      greeted = true;
+      Serial.println("Sismografo SensorTile.box - modalita' servizio. Comandi: T<epoch>  SD  ?  X");
+    }
+
     while (Serial.available()) {
       char c = Serial.read();
+      lastConn = now; lastRx = now; everConn = true;             // dati ricevuti = host presente
       if (c == '\n' || c == '\r') {
         if (line.length()) {
-          if (line[0] == 'T') {
-            uint32_t e = strtoul(line.c_str() + 1, nullptr, 10);
-            if (e > 1700000000UL) {
-              rtc.setEpoch(e);
-              Serial.print("OK ");
-              Serial.println(rtc.getEpoch());
-              deadline = millis() + 1500;
-            } else Serial.println("ERR epoch");
-          } else if (line == "SD") {
-            sdSelfTest();
-          } else if (line == "?") {
-            Serial.print("epoch=");  Serial.print(rtc.getEpoch());
-            Serial.print(" rtc_set="); Serial.println(rtc.isTimeSet());
-          }
+          handleCommand(line);
+          if (line == "X") quit = true;
           line = "";
         }
       } else if (line.length() < 32) line += c;
     }
   }
   digitalWrite(PIN_LED_BLU, LOW);
-  (void)selfTested;
   Serial.end();
 }
 
